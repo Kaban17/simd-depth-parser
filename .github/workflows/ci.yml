@@ -1,0 +1,15 @@
+name: ci
+
+on: [push, pull_request]
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: cmake -B build && cmake --build build -j
+      - name: Validate against reference parser
+        run: |
+          python3 tools/gen.py 20000 > events.jsonl
+          ./build/depth_bench events.jsonl 1
