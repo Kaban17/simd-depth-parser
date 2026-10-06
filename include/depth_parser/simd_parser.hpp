@@ -3,6 +3,7 @@
 #include "depth_parser/depth_event.hpp"
 
 #include <algorithm>
+#include <bit>
 #include <cstdint>
 #include <cstring>
 #include <immintrin.h>
@@ -454,12 +455,14 @@ class SimdDepthParser {
                                   _mm256_cmpeq_epi8(v1, q))
                               << 32);
 
-            if (__builtin_expect(qmask != 0, 1)) {
-                int q1 = __builtin_ctzll(qmask);
+            {
+                // countr_zero(0) == 64, so a level whose quotes are not all
+                // within the 64-byte window falls through to the scalar path.
+                int q1 = std::countr_zero(qmask);
                 uint64_t qm2 = qmask & (qmask - 1);
-                int q2 = __builtin_ctzll(qm2);
+                int q2 = std::countr_zero(qm2);
                 uint64_t qm3 = qm2 & (qm2 - 1);
-                int q3 = __builtin_ctzll(qm3);
+                int q3 = std::countr_zero(qm3);
 
                 if (__builtin_expect(q3 < 48 && q1 < 17 && (q3 - q2 - 1) < 17,
                                      1)) {
@@ -528,7 +531,7 @@ class SimdDepthParser {
                     p += 3;  // skip ", "
                     int64_t qty = ReadFixedE8Fallback(p);
                     *dest++ = {price, qty};
-                    p += 1;  // skip ]
+                    p += 2;  // skip "]
                 }
             }
 
